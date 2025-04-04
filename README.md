@@ -1,7 +1,7 @@
 # WHAMmse_longlived
 Single species WHAM MSE testing data limited MPs for generalized long lived life history
 
-Possible thanks to Chengxue Li who developed management strategy evaluation (MSE) capability in the Woods Hole Assessment Model (WHAM)
+This work is possible thanks to Chengxue Li, who developed management strategy evaluation (MSE) capability in the Woods Hole Assessment Model (WHAM)
 
 https://github.com/lichengxue/whamMSE
 
