@@ -1,0 +1,265 @@
+---
+title: "WHAM MSE startup"
+author: "Sarah Gaichas"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Following the vignettes from Chengxue Li at https://lichengxue.github.io/whamMSE/
+
+Installed as instructed under https://lichengxue.github.io/whamMSE/01.Installation.html but WHAM dev branch already installed
+
+Running self test and cross test https://lichengxue.github.io/whamMSE/02.Self-test-and-Cross-test.html
+
+Simple self test need to change some inputs to avoid error, code modified from vignette below, all other code blocks from vignette
+
+```{r}
+year_start  <- 1  # starting year in the burn-in period
+year_end    <- 20  # end year in the burn-in period
+MSE_years   <- 0     # number of years in the feedback loop
+# Note: no need to include MSE_years in simulation-estimation 
+
+info <- generate_basic_info(n_stocks = 2,
+                            n_regions = 2,
+                            n_indices = 2,
+                            n_fleets = 2,
+                            n_seasons = 4,
+                            base.years = year_start:year_end,
+                            n_feedback_years = MSE_years,
+                            life_history = "medium",
+                            n_ages = 12,
+                            #Fbar_ages = 12,
+                            #recruit_model = 2,
+                            F_info = list(F.year1 = 0.2, Fhist = "constant", Fmax = 0.4, Fmin = 0.2, change_time = 0.5, user_F = NULL),
+                            catch_info = list(catch_cv = 0.1, catch_Neff = 100),
+                            index_info = list(index_cv = 0.1, index_Neff = 100, fracyr_indices = 0.625, q = 0.2),
+                            fracyr_spawn = 0.625,
+                            fracyr_seasons = NULL,
+                            fleet_regions = NULL, # was fleet_pointer
+                            index_regions = NULL, # was index_pointer
+                            user_waa = NULL,
+                            user_maturity = NULL,
+                            bias.correct.process = FALSE,
+                            bias.correct.observation = FALSE,
+                            bias.correct.BRPs = FALSE,
+                            mig_type = 0,
+                            XSPR_R_opt = 2,
+                            move_dyn = 0, # natal homing is assumed
+                            onto_move = 0,
+                            onto_move_pars = NULL,
+                            apply_re_trend = 0,
+                            trend_re_rate = NULL,
+                            apply_mu_trend = 0,
+                            trend_mu_rate = NULL, 
+                            age_mu_devs = NULL) 
+
+basic_info = info$basic_info # collect basic information
+catch_info = info$catch_info # collect fleet catch information
+index_info = info$index_info # collect survey information
+F_info = info$F # collect fishing information
+
+# see more details using ?generate_basic_info
+```
+
+Which option to run? Trying 3a bi-directional
+
+```{r}
+basic_info <- generate_NAA_where(basic_info = basic_info, move.type = 2)
+# Note: the default is "bidirectional" movement (e.g. stock 1 move to region 2 and stock 2 move to region 1)
+
+move <- generate_move(basic_info = basic_info, move.type = 2, move.rate = c(0.3, 0.1), move.re = "constant") # Note: default is move = 0.3 (constant) for stock1 and 0.1 (constant) for the other stocks
+```
+
+Selectivity and M, 0.2 of course
+
+```{r}
+n_stocks  <- as.integer(basic_info['n_stocks'])
+n_regions <- as.integer(basic_info['n_regions'])
+n_fleets  <- as.integer(basic_info['n_fleets'])
+n_indices <- as.integer(basic_info['n_indices'])
+n_ages    <- as.integer(basic_info['n_ages'])
+
+# Selectivity Configuration
+fleet_pars <- c(5,1)
+index_pars <- c(2,1)
+sel <- list(model=rep("logistic",n_fleets+n_indices),
+            initial_pars=c(rep(list(fleet_pars),n_fleets),rep(list(index_pars),n_indices)))
+
+# M Configuration
+M <- list(model="constant",initial_means=array(0.2, dim = c(n_stocks,n_regions,n_ages)))
+```
+
+NAA
+
+```{r}
+sigma        <- "rec+1"
+re_cor       <- "iid"
+ini.opt      <- "equilibrium" # option <- c("age-specific-fe", "equilibrium")
+Rec_sig      <- 0.5 # (sigma for recruitment)
+NAA_sig      <- 0.5 # (sigma for NAA)
+
+sigma_vals = array(NAA_sig, dim = c(n_stocks, n_regions, n_ages)) # n_stocks x n_regions x n_ages
+sigma_vals[,,1] = Rec_sig
+
+# Set initial NAA for each stock
+log_N1    <- rep(10,n_stocks)
+log_N1[1] <- log(exp(10)*2) # N1_stock1 is 2 times higher than N1_stock2
+N1_pars   <- generate_ini_N1(log_N1,basic_info,ini.opt)
+
+# Set mean recruitment para. for each stock
+mean_rec_par <- list()
+for (i in 1:n_stocks) mean_rec_par[[i]] <- exp(log_N1[i])
+
+NAA_re <- list(N1_model=rep(ini.opt,n_stocks),
+               sigma=rep(sigma,n_stocks),
+               cor=rep(re_cor,n_stocks),
+               recruit_model = 2,  # rec random around the mean
+               recruit_pars = mean_rec_par, 
+               sigma_vals = sigma_vals,  
+               N1_pars = N1_pars,
+               NAA_where = basic_info$NAA_where) # NAA_where must be specified in basic_info!
+```
+
+WHAM input
+
+```{r}
+input <- prepare_wham_input(basic_info = basic_info, 
+                            selectivity = sel, 
+                            M = M, 
+                            NAA_re = NAA_re, 
+                            move = move,
+                            catch_info = catch_info, 
+                            index_info = index_info, 
+                            F = F_info)
+```
+
+OM generation
+
+```{r}
+om <- fit_wham(input, do.fit = F, do.brps = T, MakeADFun.silent = TRUE)
+# Note: do.fit must be FALSE (no modeling fitting yet)
+```
+
+Self test
+
+```{r}
+sim_fn <- function(om, self.fit = FALSE){
+  input <- om$input
+  input$data <- om$simulate(complete=TRUE)
+  # $simulate() is a function to generate datasets given the parameters defined in the OM
+  # Note: process error and observation error are both turned on when simulating datasets 
+  # To turn them off, use basic_info$simulate_process_error = 0 and basic_info$simulate_observation_error = 0
+  if(self.fit) {
+    fit <- fit_wham(input, do.osa = FALSE, do.retro = FALSE, MakeADFun.silent = FALSE)
+    return(fit)
+  } else return(input) 
+}
+# Note: turn on do.osa to calculate one-step-ahead residuals
+# Note: turn on do.retro to calculate retrospective bias
+set.seed(12345)
+self_sim_fit <- sim_fn(om, self.fit = TRUE)
+```
+
+Check convergence (pass)
+
+```{r}
+check_convergence(self_sim_fit) # check the model convergence
+```
+
+Cross test: setup
+
+```{r}
+# EM with different NAA configuration
+sigma      <- "rec+1"
+re_cor     <- "2dar1" # Misspecification here
+
+ini.opt    <- "equilibrium"
+NAA_re <- list(N1_model=rep(ini.opt,n_stocks),
+               sigma=rep(sigma,n_stocks),
+               cor=rep(re_cor,n_stocks),
+               NAA_where = basic_info$NAA_where)
+               
+# Generate wham input
+input <- prepare_wham_input(basic_info = basic_info, selectivity = sel, M = M, NAA_re = NAA_re, move = move,
+                            catch_info = catch_info, index_info = index_info, F = F_info)
+
+# Generate EM
+em <- fit_wham(input, do.fit = F, do.brps = F, MakeADFun.silent = TRUE)
+```
+
+Cross test: perform
+
+```{r}
+sim_fn2 <- function(om, em, cross.fit = FALSE){
+  input <- em$input
+  input$data <- om$simulate(complete=TRUE)
+  if(cross.fit) {
+    fit <- fit_wham(input, do.osa = FALSE, do.retro = FALSE, MakeADFun.silent = FALSE)
+    return(fit)
+  } else return(input) 
+}
+
+set.seed(12345)
+cross_sim_fit <- sim_fn2(om, em, cross.fit = TRUE)
+```
+
+Cross test: convergence test (fails)
+
+```{r}
+check_convergence(cross_sim_fit)
+```
+Replicates
+
+Self test
+
+```{r}
+nsim <- 100 
+set.seed(8675309) 
+sim_input <- list()
+sim_input <- lapply(1:nsim, function(x) {
+  input_i <- om$input
+  sim <- om$simulate(complete=TRUE)
+  input_i$data <- sim
+  return(input_i)
+})
+
+# Self test
+sim_fits <- list()
+sim_fits <- lapply(1:nsim, function(x){
+  cat(paste("model_fit:", x, "start \n"))
+  out <- fit_wham(sim_input[[x]], do.osa = FALSE, MakeADFun.silent = TRUE, retro.silent = TRUE, save.sdrep = FALSE)
+  cat(paste("model_fit:", x, "done \n"))
+  return(out)
+})
+
+# Summarize results 
+conv <- sapply(1:nsim, function(x){
+  if (length(sim_fits[[x]]) != 0) {
+    if (sim_fits[[x]]$is_sdrep & !sim_fits[[x]]$na_sdrep & !sim_fits[[x]]$hessian) {
+      conv = TRUE } else conv = FALSE
+  } else conv = FALSE
+  return(conv)
+})
+cat(paste("Convergence rate:", sum(conv)/nsim))
+
+mean_rec_par <- lapply(1:nsim, function(x){
+  mean_rec_par_est <- sim_fits[[x]]$parList$mean_rec_pars[,1]
+  mean_rec_par_true <- sim_fits[[x]]$input$par$mean_rec_pars[,1]
+  mean_rec_par <- cbind(mean_rec_par_est,mean_rec_par_true)
+  return(mean_rec_par)
+})
+print(mean_rec_par)
+
+SSB <- lapply(1:nsim, function(x){
+  SSB_est <- sim_fits[[x]]$rep$SSB
+  SSB_true <- sim_fits[[x]]$input$data$SSB
+  SSB <- cbind(SSB_est, SSB_true)
+  return(SSB)
+})
+print(SSB)
+```
+
