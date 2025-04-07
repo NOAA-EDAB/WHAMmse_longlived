@@ -1,0 +1,21 @@
+---
+title: "WHAM MSE Pages"
+author: "Sarah Gaichas"
+output: html_document
+---
+
+<button>
+    <a href="https://github.com/NOAA-EDAB/WHAMmse_longlived"> WHAM mse longlived github repo </a>
+</button>
+
+
+<!-- ADD LINKS BELOW, note, using the RMD link syntax will open the presentation in the same tab, which is annoying. Use the html with the "_blank" to fix that behavior -->
+
+## Analysis pages
+ 
+
+<a href="https://noaa-edab.github.io/WHAMmse_longlived/GettingStarted.html" target="_blank"> Test WHAM MSE code from vignettes - April 2025 </a> 
+
+<a href="https://noaa-edab.github.io/WHAMmse_longlived/WorkflowDecisions.html" target="_blank"> Documenting long lived MSE workflow - April 2025 </a>
+
+<a href="https://noaa-edab.github.io/WHAMmse_longlived/Results.html" target="_blank"> Initial results - April 2025 </a>

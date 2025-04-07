@@ -13,6 +13,14 @@ Following the vignettes from Chengxue Li at https://lichengxue.github.io/whamMSE
 
 Installed as instructed under https://lichengxue.github.io/whamMSE/01.Installation.html but WHAM dev branch already installed
 
+```{r}
+library(wham)
+library(whamMSE)
+
+main.dir = here::here()
+```
+
+
 Running self test and cross test https://lichengxue.github.io/whamMSE/02.Self-test-and-Cross-test.html
 
 Simple self test need to change some inputs to avoid error, code modified from vignette below, all other code blocks from vignette
@@ -214,9 +222,9 @@ check_convergence(cross_sim_fit)
 ```
 Replicates
 
-Self test
+Self test, run once, took 6 hours
 
-```{r}
+```{r, eval=FALSE}
 nsim <- 100 
 set.seed(8675309) 
 sim_input <- list()
@@ -235,6 +243,9 @@ sim_fits <- lapply(1:nsim, function(x){
   cat(paste("model_fit:", x, "done \n"))
   return(out)
 })
+
+#skg added
+saveRDS(sim_fits, here::here("localhugefiles/sim_fits_self_test.rds"))
 
 # Summarize results 
 conv <- sapply(1:nsim, function(x){
@@ -261,5 +272,15 @@ SSB <- lapply(1:nsim, function(x){
   return(SSB)
 })
 print(SSB)
+
+
+```
+
+What does the object look like? Huge
+
+```{r}
+sim_fits <- readRDS(here::here("localhugefiles/sim_fits_self_test.rds"))
+
+
 ```
 
