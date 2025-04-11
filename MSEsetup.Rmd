@@ -28,6 +28,8 @@ main.dir = here::here()
 
 ## Run the vignette exactly first, Cheng fixed! works now
 
+This is just a test, code not run for html
+
 ```{r, eval=FALSE}
 year_start  <- 1  # starting year in the burn-in period
 year_end    <- 20  # end year in the burn-in period
@@ -195,6 +197,8 @@ Start with a 20 year burn in and 20 MSE years. First try constant low F. Then wo
 Fishing pattern is "constant" at first to get running
 
 Now set up as in new Single Stock MSE vignette: https://lichengxue.github.io/whamMSE/11.Single-Stock-MSE.html
+
+These are run and outputs are in the html, so it will be loooonnnng
 
 ```{r}
 
