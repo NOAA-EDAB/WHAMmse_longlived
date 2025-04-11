@@ -194,6 +194,8 @@ Start with a 20 year burn in and 20 MSE years. First try constant low F. Then wo
 
 Fishing pattern is "constant" at first to get running
 
+Now set up as in new Single Stock MSE vignette: https://lichengxue.github.io/whamMSE/11.Single-Stock-MSE.html
+
 ```{r}
 
 year_start  <- 1  # starting year in the burn-in period
@@ -372,6 +374,74 @@ mods[[1]] = loop_through_fn(om = om_with_data,
                             save.sdrep = FALSE, 
                             save.last.em = TRUE,
                             FXSPR_init = 0.01) # IMPORTANT!
+```
+
+Try same model with poorer survey in the future
+
+See https://lichengxue.github.io/whamMSE/15.Reduce-Data-Availability-In-Assessment.html#6_Increase_observation_error_and_reduce_sample_size_for_survey_indices_in_the_feedback_period 
+
+```{r}
+agg_index_sigma = input$data$agg_index_sigma
+agg_index_sigma[21:40,] = 1 # Increase CV for both survey indices in the feedback period
+index_Neff = input$data$index_Neff
+index_Neff[21:40,] = 30 # Decrease ESS for both survey indices in the feedback period
+
+input <- update_input_index_info(input, agg_index_sigma, index_Neff) # Update input file
+```
+
+Generate new om and dataset, keep same assessment interval as above
+
+```{r}
+om <- fit_wham(input, do.fit = F, do.brps = T, MakeADFun.silent = TRUE)
+om_with_data <- update_om_fn(om, seed = 123, random = random)
+```
+
+Run new loop
+
+```{r}
+mods[[2]] = loop_through_fn(om = om_with_data,
+                            em_info = info, 
+                            random = random,
+                            M_em = M, # use OM M
+                            sel_em = sel, # use OM sel
+                            NAA_re_em = NAA_re_em, # use rec assumed random around the mean instead, help runtime (est B-H is difficult)
+                            move_em = NULL,
+                            age_comp_em = "multinomial",
+                            # Here is the correct code: separate.em = FALSE also works for one-area model
+                            em.opt = list(separate.em = FALSE, separate.em.type = 1, 
+                                          do.move = FALSE, est.move = FALSE),
+                            assess_years = assess.years, 
+                            assess_interval = assess.interval, 
+                            base_years = base.years,
+                            year.use = 20, # number of years of data you want to use in the assessment model
+                            seed = 123,
+                            save.sdrep = FALSE, 
+                            save.last.em = TRUE,
+                            FXSPR_init = 0.01) # IMPORTANT!
+
+```
+
+
+Visualize 2 mods (modified from https://lichengxue.github.io/whamMSE/03.Management-Strategy-Evaluation.html#12_Compare_model_performance)
+
+```{r}
+
+par(mfrow = c(1,2))
+SSB_s1 <- lapply(mods, function(mod) mod$om$rep$SSB[,1])
+plot(SSB_s1[[1]], type = "l", col = "blue", ylab = "SSB", xlab = "Year", ylim=c(0,100000), main = "OM SSB") 
+colors <- c("red","green","purple","orange")
+for (i in length(SSB_s1)) {
+  lines(SSB_s1[[i]], col = colors[i-1],lty = i)
+}
+legend("topleft",legend = paste0("EM ", 1:2), col = c("blue",colors),lty=1:5, cex=0.8)
+
+Catch_s1 <- lapply(mods, function(mod) mod$om$rep$pred_catch[,1])
+plot(Catch_s1[[1]], type = "l", col = "blue", ylab = "Catch", xlab = "Year", ylim=c(0,30000), main = "OM Catch")
+colors <- c("red","green","purple","orange")
+for (i in length(Catch_s1)) {
+  lines(Catch_s1[[i]], col = colors[i-1],lty = i)
+}
+
 ```
 
 
