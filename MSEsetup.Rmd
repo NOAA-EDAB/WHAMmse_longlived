@@ -370,6 +370,7 @@ mods[[1]] = loop_through_fn(om = om_with_data,
                             assess_interval = assess.interval, 
                             base_years = base.years,
                             year.use = 20, # number of years of data you want to use in the assessment model
+                            add.years = TRUE, # extends assessment time series instead of moving window of year.use years
                             seed = 123,
                             save.sdrep = FALSE, 
                             save.last.em = TRUE,
@@ -414,6 +415,8 @@ mods[[2]] = loop_through_fn(om = om_with_data,
                             assess_interval = assess.interval, 
                             base_years = base.years,
                             year.use = 20, # number of years of data you want to use in the assessment model
+                            add.years = TRUE,
+                            update_index_info  = list(agg_index_sigma = agg_index_sigma, index_Neff = index_Neff), # Must have this!
                             seed = 123,
                             save.sdrep = FALSE, 
                             save.last.em = TRUE,
@@ -423,6 +426,8 @@ mods[[2]] = loop_through_fn(om = om_with_data,
 
 
 Visualize 2 mods (modified from https://lichengxue.github.io/whamMSE/03.Management-Strategy-Evaluation.html#12_Compare_model_performance)
+
+This compares a good survey in the future (1) with a poor survey in the future (2)
 
 ```{r}
 
@@ -441,6 +446,78 @@ colors <- c("red","green","purple","orange")
 for (i in length(Catch_s1)) {
   lines(Catch_s1[[i]], col = colors[i-1],lty = i)
 }
+
+```
+Now add the one with no survey, from Cheng's code
+
+```{r}
+# ---------------------------------
+# Actually the above section (CV and Neff) will be useless because we will not have survey data in the feedback period), see code below:
+# ---------------------------------
+remove_agg = TRUE # remove a aggregate index for some years
+remove_agg_pointer = 1 # target on index 1
+remove_agg_years = 21:40 # all feedback years
+remove_paa = TRUE # Also remove age comp for that index 
+remove_paa_pointer = 1 # target on index 1
+remove_paa_years = 21:40 # all feedback years
+
+input <- update_input_index_info(input, agg_index_sigma, index_Neff,
+                                 remove_agg, remove_agg_pointer, remove_agg_years,
+                                 remove_paa, remove_paa_pointer, remove_paa_years) # Update input file
+```
+
+Generate new om and dataset, keep same assessment interval as above
+
+```{r}
+om <- fit_wham(input, do.fit = F, do.brps = T, MakeADFun.silent = TRUE)
+om_with_data <- update_om_fn(om, seed = 123, random = random)
+```
+
+Run new loop
+
+```{r}
+# this simulation actually represents the data-missing scenario.
+mods[[3]] = loop_through_fn(om = om_with_data,
+                            em_info = info, 
+                            random = random,
+                            M_em = M, # use OM M
+                            sel_em = sel, # use OM sel
+                            NAA_re_em = NAA_re_em, # use rec assumed random around the mean instead, help runtime (est B-H is difficult)
+                            move_em = NULL,
+                            age_comp_em = "multinomial",
+                            # Here is the correct code: separate.em = FALSE also works for one-area model
+                            em.opt = list(separate.em = FALSE, separate.em.type = 1, 
+                                          do.move = FALSE, est.move = FALSE),
+                            assess_years = assess.years, 
+                            assess_interval = assess.interval, 
+                            base_years = base.years,
+                            year.use = 20, # number of years of data you want to use in the assessment model
+                            add.years = TRUE,
+                            # Must have the below code! Otherwise the EM will assume a constant CV and Neff (same as the CV and Neff in the first year) for the survey
+                            update_index_info  = list(agg_index_sigma = agg_index_sigma, index_Neff = index_Neff), # Must have this!
+                            seed = 123,
+                            save.sdrep = FALSE, 
+                            save.last.em = TRUE,
+                            FXSPR_init = 0.01) # IMPORTANT!
+
+```
+
+Visualize 3 mods (modified from https://lichengxue.github.io/whamMSE/03.Management-Strategy-Evaluation.html#12_Compare_model_performance)
+
+```{r}
+
+par(mfrow = c(1,2))
+SSB_s1 <- lapply(mods, function(mod) mod$om$rep$SSB[,1])
+plot(SSB_s1[[1]], type = "l", col = "blue", ylab = "SSB", xlab = "Year", ylim=c(1e4,130000), main = "OM SSB",, lwd = 2) 
+lines(SSB_s1[[2]], col = "red",lty = 1, lwd = 2)
+lines(SSB_s1[[3]], col = "orange",lty = 1, lwd = 2)
+
+legend("topleft",legend = c("EM1_good_survey", "EM2_poor_survey","EM3_missing_survey"), col = c("blue","red","orange"),lty=1, cex=0.8)
+
+Catch_s1 <- lapply(mods, function(mod) mod$om$rep$pred_catch[,1])
+plot(Catch_s1[[1]], type = "l", col = "blue", ylab = "Catch", xlab = "Year", ylim=c(0,15000), main = "OM Catch", lwd = 2)
+lines(Catch_s1[[2]], col = "red",lty = 1, lwd = 2)
+lines(Catch_s1[[3]], col = "orange",lty = 1, lwd = 2)
 
 ```
 
