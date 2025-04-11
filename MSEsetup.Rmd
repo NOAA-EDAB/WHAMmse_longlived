@@ -26,7 +26,7 @@ library(whamMSE)
 main.dir = here::here()
 ```
 
-## Run the vignette exactly first, breaks
+## Run the vignette exactly first, Cheng fixed! works now
 
 ```{r, eval=FALSE}
 year_start  <- 1  # starting year in the burn-in period
@@ -99,8 +99,8 @@ NAA_re <- list(N1_model=rep(ini.opt,n_stocks),
                recruit_model = 3,
                recruit_pars = rep(list(c(alpha,beta)),n_stocks), # assume same B-H s-r functions for all stocks
                sigma_vals = sigma_vals,
-               N1_pars = N1_pars,
-               NAA_where = basic_info$NAA_where)
+               N1_pars = N1_pars)#,
+               #NAA_where = basic_info$NAA_where)
 
 # recruit_model = 1: estimating annual recruitments as fixed effects or a random walk if NAA_re$sigma specified
 # recruit_model = 2: estimating a mean recruitment with annual recruitments as random effects
@@ -157,10 +157,18 @@ mods[[1]] = loop_through_fn(om = om_with_data,
                             age_comp_em = "multinomial",
                             em.opt = list(separate.em = TRUE, separate.em.type = 1, 
                                           do.move = FALSE, est.move = FALSE),
-                            aggregate_index_info = list(index_pointer = rep(1,2),
-                                                        use_catch_weighted_waa = TRUE),
-                            aggregate_catch_info = list(fleet_pointer = rep(1,2),
-                                                        use_catch_weighted_waa = TRUE),
+                            # Please use this code:
+                            aggregate_catch_info = list(n_fleets = 1, 
+                                                        fleet_pointer = c(1,1), 
+                                                        use_catch_weighted_waa=TRUE, 
+                                                        catch_Neff = 100, 
+                                                        catch_cv = 0.1),
+                            # Please use this code:
+                            aggregate_index_info = list(n_indices = 1, 
+                                                        index_pointer = c(1,1), 
+                                                        use_catch_weighted_waa=TRUE, 
+                                                        index_Neff = 100, 
+                                                        index_cv = 0.1),
                             assess_years = assess.years, 
                             assess_interval = assess.interval, 
                             base_years = base.years,
@@ -169,9 +177,12 @@ mods[[1]] = loop_through_fn(om = om_with_data,
                             seed = 123,
                             save.sdrep = FALSE, 
                             save.last.em = TRUE)
+
+mods[[1]]$om$rep$pred_catch # Check catch in the feedback loop
+mods[[1]]$om$rep$SSB  # Check SSB in the feedback loop
 ```
 
-## Modify for long-lived, this runs but crashes
+## Modify for long-lived, Cheng fixed and now runs
 
 Basic info for a long-lived species. Based on @wiedenmann_evaluation_2017, Table 3 B and C.
 
@@ -181,7 +192,7 @@ Modify from https://lichengxue.github.io/whamMSE/03.Management-Strategy-Evaluati
 
 Start with a 20 year burn in and 20 MSE years. First try constant low F. Then work up to complex case.
 
-Fishing pattern is "updown" increasing to Fmax then decreasing back to Fmin
+Fishing pattern is "constant" at first to get running
 
 ```{r}
 
@@ -194,14 +205,13 @@ info <- generate_basic_info(n_stocks = 1, #2,
                             n_regions = 1, #2,
                             n_indices = 1, #2,
                             n_fleets = 1, #2,
-                            n_seasons = 4,
+                            n_seasons = 1, # don't need seasons
                             base.years = year_start:year_end,
                             n_feedback_years = MSE_years,
                             life_history = "long",
                             n_ages = 20,
-                            #Fbar_ages = 12,
-                            #recruit_model = 2,
-                            F_info = list(F.year1 = 0.01, Fhist = "constant", Fmax = 0.01, Fmin = 0.01, change_time = 0.5, user_F = NULL),
+                            # We want a bit higher F in the historical period
+                            F_info = list(F.year1 = 0.1, Fhist = "constant", Fmax = 0.1, Fmin = 0.1, change_time = 0.5, user_F = NULL),
                             catch_info = list(catch_cv = 0.1, catch_Neff = 100),
                             index_info = list(index_cv = 0.1, index_Neff = 100, fracyr_indices = 0.625, q = 0.2),
                             fracyr_spawn = 0.625) 
@@ -268,8 +278,8 @@ NAA_re <- list(N1_model=rep(ini.opt,n_stocks),
                recruit_model = 3,
                recruit_pars = rep(list(c(alpha,beta)),n_stocks), # assume same B-H s-r functions for all stocks
                sigma_vals = sigma_vals,
-               N1_pars = N1_pars,
-               NAA_where = basic_info$NAA_where)
+               N1_pars = N1_pars)#,
+               #NAA_where = basic_info$NAA_where)
 
 # recruit_model = 1: estimating annual recruitments as fixed effects or a random walk if NAA_re$sigma specified
 # recruit_model = 2: estimating a mean recruitment with annual recruitments as random effects
@@ -295,6 +305,11 @@ Make inputs for the OM
                             catch_info = catch_info, 
                             index_info = index_info, 
                             F = F_info)
+
+# IMPORTANT!#
+# This appears to be due to the initial F value for the Newton iterations to find F40. The default value is too high for long-lived fish
+input$data$FXSPR_init[] <- 0.01 # change to a low value
+
 ```
 
 Make the OM
@@ -329,37 +344,34 @@ Try a simple EM, looks like EM1 [here](https://lichengxue.github.io/whamMSE/03.M
 
 ```{r}
 # this matches the OM
-n_stocks = n_regions = n_fleets = n_indices = 1
-
-sel_em <- list(model=rep("logistic",n_fleets+n_indices),
-               initial_pars=c(rep(list(fleet_pars),n_fleets),rep(list(index_pars),n_indices)))
-
+# n_stocks = n_regions = n_fleets = n_indices = 1
+# 
+# sel_em <- list(model=rep("logistic",n_fleets+n_indices),
+#                initial_pars=c(rep(list(fleet_pars),n_fleets),rep(list(index_pars),n_indices)))
+# 
 NAA_re_em <- list(N1_model="equilibrium",sigma="rec+1",cor="iid")
-
-M_em <- list(model="constant",initial_means=array(0.1, dim = c(n_stocks,n_regions,n_ages))) # this is misspecified M
+# 
+# M_em <- list(model="constant",initial_means=array(0.1, dim = c(n_stocks,n_regions,n_ages))) # this is misspecified M
 
 mods[[1]] = loop_through_fn(om = om_with_data,
                             em_info = info, 
                             random = random,
-                            M_em = M_em, 
-                            sel_em = sel_em, 
-                            NAA_re_em = NAA_re_em, 
+                            M_em = M, # use OM M
+                            sel_em = sel, # use OM sel
+                            NAA_re_em = NAA_re_em, # use rec assumed random around the mean instead, help runtime (est B-H is difficult)
                             move_em = NULL,
                             age_comp_em = "multinomial",
-                            em.opt = list(separate.em = TRUE, separate.em.type = 1, 
+                            # Here is the correct code: separate.em = FALSE also works for one-area model
+                            em.opt = list(separate.em = FALSE, separate.em.type = 1, 
                                           do.move = FALSE, est.move = FALSE),
-                            aggregate_index_info = list(index_pointer = rep(1,1),
-                                                        use_catch_weighted_waa = TRUE),
-                            aggregate_catch_info = list(fleet_pointer = rep(1,1),
-                                                        use_catch_weighted_waa = TRUE),
                             assess_years = assess.years, 
                             assess_interval = assess.interval, 
                             base_years = base.years,
                             year.use = 20, # number of years of data you want to use in the assessment model
-                            hcr = list(hcr.type = 1, hcr.opts = NULL), 
                             seed = 123,
                             save.sdrep = FALSE, 
-                            save.last.em = TRUE)
+                            save.last.em = TRUE,
+                            FXSPR_init = 0.01) # IMPORTANT!
 ```
 
 
