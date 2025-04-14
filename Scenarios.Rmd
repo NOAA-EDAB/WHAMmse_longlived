@@ -1,0 +1,73 @@
+---
+title: "MSE Scenarios for short and long lived"
+author: "Sarah Gaichas"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Setup for MSEs
+
+Single area
+
+Two surveys spring and fall
+
+Testing alternating spring and fall
+
+Baseline is all data all the time, 
+
+CV = empirical value from stockeff across short and long lived species
+
+Eff = 100
+
+Catch CV = 10%
+
+Eff = 100
+
+Project at F40%
+
+Assessment frequency 3 years
+
+IID NAA
+
+30 year spin up 30 year loop (10 assessment cycles)
+
+F scenario for spin up? high followed by lower? Yes
+
+"F-H-L" Fmax = 2.5, Fmin = 1, changepoint = 0.5
+
+sigma squared for NAA and recruitment?
+
+cod assessment or redfish for these
+
+## Degraded data quality scenarios: 
+
+Alternate spring and fall, double CV and half Eff (50)
+
+Fishery data, double CV (0.2) and half Eff (50)
+
+Keep multinomial 
+
+Single fleet logistic selectivity: shift one age to the right from maturity ogive
+
+Different selectivity by spring and fall survey: mimic some long lived species
+
+## Empirical management procedure
+
+Index based method:  Ismooth averaging most recent 3 years of whatever surveys (rescaled to mean of each using Ismooth package)
+
+Ismooth package is here https://github.com/cmlegault/PlanBsmooth
+
+100 replicates for each, try the parallel processing
+
+* Base scenario 
+* Alternating surveys and less age comps with 3 year assessments
+* Empirical management procedures (later)
+
+
+
+
+
