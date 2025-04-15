@@ -43,7 +43,7 @@ F.year1 = 0.1, Fhist = "F-H-L", Fmax = 2.5, Fmin = 1, changepoint = 0.5
 
 sigma squared for NAA and recruitment?
 
-cod assessment or redfish for these
+cod assessment or redfish for these (Brian supplied redfish!)
 
 I think this script does this
 
