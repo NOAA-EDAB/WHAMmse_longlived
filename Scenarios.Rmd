@@ -139,7 +139,7 @@ ini.opt    <- "equilibrium" # option   <- c("age-specific-fe", "equilibrium")
 
 # Set sigma for NAA
 # add higher rec_sig similar to redfish WHAM
-rec_sig <- 1.0
+Rec_sig <- 1.0
 NAA_sig <- 0.2
 sigma_vals = array(NAA_sig, dim = c(n_stocks, n_regions, n_ages)) # n_stocks x n_regions x n_ages"
 sigma_vals[,,1] = Rec_sig
