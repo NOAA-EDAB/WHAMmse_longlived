@@ -138,18 +138,25 @@ ini.opt    <- "equilibrium" # option   <- c("age-specific-fe", "equilibrium")
 # beta  <- 1.5e-4
 
 # Set sigma for NAA
+# add higher rec_sig similar to redfish WHAM
+rec_sig <- 1.0
 NAA_sig <- 0.2
 sigma_vals = array(NAA_sig, dim = c(n_stocks, n_regions, n_ages)) # n_stocks x n_regions x n_ages"
+sigma_vals[,,1] = Rec_sig
 
 # Set initial NAA for each stock
 log_N1  <- rep(10, n_stocks) # Create difference between stocks
 N1_pars <- generate_ini_N1(log_N1,basic_info,ini.opt)
 
+# Set mean recruitment para. for each stock
+mean_rec_par <- list()
+for (i in 1:n_stocks) mean_rec_par[[i]] <- exp(log_N1[i])
+
 NAA_re <- list(N1_model=rep(ini.opt,n_stocks),
                sigma=rep(sigma,n_stocks),
                cor=rep(re_cor,n_stocks),
                recruit_model = 2,
-               #recruit_pars = rep(list(c(alpha,beta)),n_stocks), # assume same B-H s-r functions for all stocks
+               recruit_pars = mean_rec_par, # rep(list(c(alpha,beta)),n_stocks), # assume same B-H s-r functions for all stocks
                sigma_vals = sigma_vals,
                N1_pars = N1_pars)#,
                #NAA_where = basic_info$NAA_where)
