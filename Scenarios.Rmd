@@ -21,13 +21,17 @@ Baseline is all data all the time,
 
 CV = empirical value from stockeff across short and long lived species
 
+Looks like ~0.2 is reasonable for redfish in ICELAND, higher here. 
+
+Say its decent ~0.3
+
 Eff = 100
 
 Catch CV = 10%
 
 Eff = 100
 
-Project at F40%
+Project at F40% (75% F40% is HCR 1)
 
 Assessment frequency 3 years
 
@@ -44,6 +48,12 @@ F.year1 = 0.1, Fhist = "F-H-L", Fmax = 2.5, Fmin = 1, changepoint = 0.5
 sigma squared for NAA and recruitment?
 
 cod assessment or redfish for these (Brian supplied redfish!)
+
+Keep multinomial 
+
+Single fleet logistic selectivity: shift one age to the right from maturity ogive
+
+Different selectivity by spring and fall survey: mimic some long lived species
 
 I think this script does this
 
@@ -87,7 +97,7 @@ info <- generate_basic_info(n_stocks = 1,
                             # We want a bit higher F in the historical period
                             F_info = list(F.year1 = 0.1, Fhist = "F-H-L", Fmax = 2.5, Fmin = 1, change_time = 0.5, user_F = NULL),
                             catch_info = list(catch_cv = 0.1, catch_Neff = 100),
-                            index_info = list(index_cv = 0.1, index_Neff = 100, fracyr_indices = c(0.295, 0.812), q = 0.2),
+                            index_info = list(index_cv = 0.3, index_Neff = 100, fracyr_indices = c(0.295, 0.812), q = 0.2),
                             fracyr_spawn = 0.625) 
 
 basic_info = info$basic_info # collect basic information
@@ -170,6 +180,18 @@ input <- prepare_wham_input(basic_info = basic_info,
 # This appears to be due to the initial F value for the Newton iterations to find F40. The default value is too high for long-lived fish
 input$data$FXSPR_init[] <- 0.01 # change to a low value
 
+# -------------------
+# IMPORTANT!#
+# -------------------
+# Change initial numbers at age in the input for OM
+# ini.NAA <- matrix(NA, n_ages, n_stocks)
+# ini.NAA[,1] <- c(20:1) # Use actually initial numbers at age from assessment model?
+# 
+# input$par$log_N1[] = 0
+# for (i in 1:n_regions) {
+#   input$par$log_N1[i,i,] = log(ini.NAA[,i])
+# }
+
 random = input$random # check what processes are random effects
 input$random = NULL # so inner optimization won't change simulated RE
 om <- fit_wham(input, do.fit = F, do.brps = T, MakeADFun.silent = TRUE)
@@ -203,7 +225,7 @@ mods[[1]] = loop_through_fn(om = om_with_data,
                             assess_years = assess.years, 
                             assess_interval = assess.interval, 
                             base_years = base.years,
-                            year.use = 20, # number of years of data you want to use in the assessment model
+                            year.use = 30, # number of years of data you want to use in the assessment model
                             add.years = TRUE, # extends assessment time series instead of moving window of year.use years
                             seed = 123,
                             save.sdrep = FALSE, 
@@ -220,17 +242,101 @@ Alternate spring and fall, double CV and half Eff (50)
 
 Fishery data, double CV (0.2) and half Eff (50)
 
-Keep multinomial 
+```{r}
+agg_index_sigma = input$data$agg_index_sigma
+agg_index_sigma[31:60,] = 0.6 # Increase CV for both survey indices in the feedback period
+index_Neff = input$data$index_Neff
+index_Neff[31:60,] = 50 # Decrease ESS for both survey indices in the feedback period
 
-Single fleet logistic selectivity: shift one age to the right from maturity ogive
+#alternate years fall and spring surveys
+remove_agg = TRUE # remove a aggregate index for some years
+remove_agg_pointer = c(1,2) # both
+remove_agg_years = matrix(data=c(seq(31,60,2), seq(32,60,2)), nrow=15, ncol=2) #alternating years by survey
+remove_paa = TRUE # Also remove age comp for that index 
+remove_paa_pointer = c(1,2) # both
+remove_paa_years = matrix(data=c(seq(31,60,2), seq(32,60,2)), nrow=15, ncol=2) #alternating years by survey
 
-Different selectivity by spring and fall survey: mimic some long lived species
+input <- update_input_index_info(input, agg_index_sigma, index_Neff,
+                                 remove_agg, remove_agg_pointer, remove_agg_years,
+                                 remove_paa, remove_paa_pointer, remove_paa_years) # Update input file
+
+agg_catch_sigma = input$data$agg_catch_sigma
+agg_catch_sigma[31:60,] = 0.2 #double catch CV in the feedback period
+catch_Neff = input$data$catch_Neff
+catch_Neff[31:60] = 50
+
+input <- update_input_catch_info(input, agg_catch_sigma, catch_Neff)
+
+```
+
+Generate new om and dataset, keep same assessment interval as above
+
+```{r}
+om <- fit_wham(input, do.fit = F, do.brps = T, MakeADFun.silent = TRUE)
+om_with_data <- update_om_fn(om, seed = 123, random = random)
+```
+
+Test new EM
+
+```{r}
+
+mods[[2]] = loop_through_fn(om = om_with_data,
+                            em_info = info, 
+                            random = random,
+                            M_em = M, # use OM M
+                            sel_em = sel, # use OM sel
+                            NAA_re_em = NAA_re_em, # use rec assumed random around the mean instead, help runtime (est B-H is difficult)
+                            move_em = NULL,
+                            age_comp_em = "multinomial",
+                            # Here is the correct code: separate.em = FALSE also works for one-area model
+                            em.opt = list(separate.em = FALSE, separate.em.type = 1, 
+                                          do.move = FALSE, est.move = FALSE),
+                            assess_years = assess.years, 
+                            assess_interval = assess.interval, 
+                            base_years = base.years,
+                            year.use = 30, # number of years of data you want to use in the assessment model
+                            add.years = TRUE, # extends assessment time series instead of moving window of year.use years
+                            seed = 123,
+                            save.sdrep = FALSE, 
+                            save.last.em = TRUE,
+                            FXSPR_init = 0.01) # IMPORTANT!
+
+```
+
+
+Visualize 2 mods (modified from https://lichengxue.github.io/whamMSE/03.Management-Strategy-Evaluation.html#12_Compare_model_performance)
+
+This compares the base case,good surveys in the future (1) with degraded data, alternating year seasonal surveys with lower quality sampling (catch too) in the future (2)
+
+```{r}
+
+par(mfrow = c(1,2))
+SSB_s1 <- lapply(mods, function(mod) mod$om$rep$SSB[,1])
+plot(SSB_s1[[1]], type = "l", col = "blue", ylab = "SSB", xlab = "Year", ylim=c(0,100000), main = "OM SSB") 
+colors <- c("red","green","purple","orange")
+for (i in length(SSB_s1)) {
+  lines(SSB_s1[[i]], col = colors[i-1],lty = i)
+}
+legend("topleft",legend = paste0("EM ", 1:2), col = c("blue",colors),lty=1:5, cex=0.8)
+
+Catch_s1 <- lapply(mods, function(mod) mod$om$rep$pred_catch[,1])
+plot(Catch_s1[[1]], type = "l", col = "blue", ylab = "Catch", xlab = "Year", ylim=c(0,30000), main = "OM Catch")
+colors <- c("red","green","purple","orange")
+for (i in length(Catch_s1)) {
+  lines(Catch_s1[[i]], col = colors[i-1],lty = i)
+}
+
+```
 
 ## Empirical management procedure
 
 Index based method:  Ismooth averaging most recent 3 years of whatever surveys (rescaled to mean of each using Ismooth package)
 
 Ismooth package is here https://github.com/cmlegault/PlanBsmooth
+
+Do this later...
+
+For now, do
 
 100 replicates for each, try the parallel processing
 
