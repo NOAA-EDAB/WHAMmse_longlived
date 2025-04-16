@@ -1,21 +1,8 @@
----
-title: "Parallel Test"
-author: "Sarah Gaichas"
-date: "`r Sys.Date()`"
-output: html_document
----
+# script to run in parallel on container
+# based on tests in ParallelTest.Rmd
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
+# Set up base case with 3 year assessment interval
 
-## Test parallel script with [Scenarios](https://noaa-edab.github.io/WHAMmse_longlived/Scenarios.html)
-
-See Cheng's example https://lichengxue.github.io/whamMSE/05.Parallel-Computing.html
-
-First set up the base model, all the way up to the blank mods list, but not sampling data yet
-
-```{r base setup 3yr}
 library(wham)
 library(whamMSE)
 
@@ -135,7 +122,7 @@ NAA_re <- list(N1_model=rep(ini.opt,n_stocks),
                recruit_pars = mean_rec_par, # rep(list(c(alpha,beta)),n_stocks), # assume same B-H s-r functions for all stocks
                sigma_vals = sigma_vals,
                N1_pars = N1_pars)#,
-               #NAA_where = basic_info$NAA_where)
+#NAA_where = basic_info$NAA_where)
 
 # recruit_model = 1: estimating annual recruitments as fixed effects or a random walk if NAA_re$sigma specified
 # recruit_model = 2: estimating a mean recruitment with annual recruitments as random effects
@@ -190,28 +177,22 @@ assess.years    <- seq(terminal.year, tail(om$years,1)-assess.interval,by = asse
 
 mods <- list() # Create a list to save MSE outputs
 
-```
+## Make directory
 
-Set up folders for results
-
-```{r, eval=FALSE}
 sub.dir = "Results"
 dir.create(file.path(getwd(), sub.dir), recursive = TRUE)
 
 library(doParallel)
 library(foreach)
 
-detectCores() # check how many cores available
-```
+n_cores <- detectCores() # check how many cores available
 
+# Run base case, 3 year assessment interval, 100 reps
 
-Set up clusters to run multiple sims for each scenario
-
-```{r}
-cluster <- makeCluster(5) 
+cluster <- makeCluster(n_cores-1) 
 registerDoParallel(cluster)
 
-foreach (i = 1:5) %dopar% {
+foreach (i = 1:100) %dopar% {
   
   library(wham)
   library(whamMSE)
@@ -219,28 +200,28 @@ foreach (i = 1:5) %dopar% {
   om_with_data <- update_om_fn(om, seed = 123+i, random = random)
   
   NAA_re_em <- list(N1_model="equilibrium",sigma="rec+1",cor="iid")
-
+  
   mod = loop_through_fn(om = om_with_data,
-                            em_info = info, 
-                            random = random,
-                            M_em = M, # use OM M
-                            sel_em = sel, # use OM sel
-                            NAA_re_em = NAA_re_em, # use rec assumed random around the mean instead, help runtime (est B-H is difficult)
-                            move_em = NULL,
-                            age_comp_em = "multinomial",
-                            # Here is the correct code: separate.em = FALSE also works for one-area model
-                            em.opt = list(separate.em = FALSE, separate.em.type = 1, 
-                                          do.move = FALSE, est.move = FALSE),
-                            assess_years = assess.years, 
-                            assess_interval = assess.interval, 
-                            base_years = base.years,
-                            year.use = 30, # number of years of data you want to use in the assessment model
-                            add.years = TRUE, # extends assessment time series instead of moving window of year.use years
-                            seed = 123+i,
-                            save.sdrep = FALSE, 
-                            save.last.em = TRUE,
-                            FXSPR_init = 0.01) # IMPORTANT!
-
+                        em_info = info, 
+                        random = random,
+                        M_em = M, # use OM M
+                        sel_em = sel, # use OM sel
+                        NAA_re_em = NAA_re_em, # use rec assumed random around the mean instead, help runtime (est B-H is difficult)
+                        move_em = NULL,
+                        age_comp_em = "multinomial",
+                        # Here is the correct code: separate.em = FALSE also works for one-area model
+                        em.opt = list(separate.em = FALSE, separate.em.type = 1, 
+                                      do.move = FALSE, est.move = FALSE),
+                        assess_years = assess.years, 
+                        assess_interval = assess.interval, 
+                        base_years = base.years,
+                        year.use = 30, # number of years of data you want to use in the assessment model
+                        add.years = TRUE, # extends assessment time series instead of moving window of year.use years
+                        seed = 123+i,
+                        save.sdrep = FALSE, 
+                        save.last.em = TRUE,
+                        FXSPR_init = 0.01) # IMPORTANT!
+  
   
   saveRDS(mod, file.path(sub.dir,sprintf("Mod1_%03d.RDS",i)))
   
@@ -248,11 +229,8 @@ foreach (i = 1:5) %dopar% {
 
 stopCluster(cluster)
 
-```
+# Run base case with 6 year assessment interval
 
-Now try the same thing (base case) changing the assessment frequency
-
-```{r}
 assess.interval <- 6 # 
 
 base.years      <- year_start:year_end # Burn-in period
@@ -261,10 +239,10 @@ terminal.year   <- tail(base.years,1)
 assess.years    <- seq(terminal.year, tail(om$years,1)-assess.interval,by = assess.interval)
 
 
-cluster <- makeCluster(5) 
+cluster <- makeCluster(n_cores-1) 
 registerDoParallel(cluster)
 
-foreach (i = 1:5) %dopar% {
+foreach (i = 1:100) %dopar% {
   
   library(wham)
   library(whamMSE)
@@ -272,39 +250,37 @@ foreach (i = 1:5) %dopar% {
   om_with_data <- update_om_fn(om, seed = 123+i, random = random)
   
   NAA_re_em <- list(N1_model="equilibrium",sigma="rec+1",cor="iid")
-
+  
   mod = loop_through_fn(om = om_with_data,
-                            em_info = info, 
-                            random = random,
-                            M_em = M, # use OM M
-                            sel_em = sel, # use OM sel
-                            NAA_re_em = NAA_re_em, # use rec assumed random around the mean instead, help runtime (est B-H is difficult)
-                            move_em = NULL,
-                            age_comp_em = "multinomial",
-                            # Here is the correct code: separate.em = FALSE also works for one-area model
-                            em.opt = list(separate.em = FALSE, separate.em.type = 1, 
-                                          do.move = FALSE, est.move = FALSE),
-                            assess_years = assess.years, 
-                            assess_interval = assess.interval, 
-                            base_years = base.years,
-                            year.use = 30, # number of years of data you want to use in the assessment model
-                            add.years = TRUE, # extends assessment time series instead of moving window of year.use years
-                            seed = 123+i,
-                            save.sdrep = FALSE, 
-                            save.last.em = TRUE,
-                            FXSPR_init = 0.01) # IMPORTANT!
-
+                        em_info = info, 
+                        random = random,
+                        M_em = M, # use OM M
+                        sel_em = sel, # use OM sel
+                        NAA_re_em = NAA_re_em, # use rec assumed random around the mean instead, help runtime (est B-H is difficult)
+                        move_em = NULL,
+                        age_comp_em = "multinomial",
+                        # Here is the correct code: separate.em = FALSE also works for one-area model
+                        em.opt = list(separate.em = FALSE, separate.em.type = 1, 
+                                      do.move = FALSE, est.move = FALSE),
+                        assess_years = assess.years, 
+                        assess_interval = assess.interval, 
+                        base_years = base.years,
+                        year.use = 30, # number of years of data you want to use in the assessment model
+                        add.years = TRUE, # extends assessment time series instead of moving window of year.use years
+                        seed = 123+i,
+                        save.sdrep = FALSE, 
+                        save.last.em = TRUE,
+                        FXSPR_init = 0.01) # IMPORTANT!
+  
   
   saveRDS(mod, file.path(sub.dir,sprintf("Mod2_%03d.RDS",i)))
   
 }
 
 stopCluster(cluster)
-```
 
-Try the low data example that worked individually, first the setup
+# Set up degraded data 
 
-```{r}
 agg_index_sigma = input$data$agg_index_sigma
 agg_index_sigma[31:60,] = 0.6 # Increase CV for both survey indices in the feedback period
 index_Neff = input$data$index_Neff
@@ -331,11 +307,8 @@ input <- update_input_catch_info(input, agg_catch_sigma, catch_Neff)
 
 om <- fit_wham(input, do.fit = F, do.brps = T, MakeADFun.silent = TRUE)
 
-```
+# Run 3 year assessment frequency with degraded data
 
-Now run in parallel, 3 year assessment
-
-```{r}
 assess.interval <- 3 # 
 
 base.years      <- year_start:year_end # Burn-in period
@@ -343,10 +316,10 @@ first.year      <- head(base.years,1)
 terminal.year   <- tail(base.years,1)
 assess.years    <- seq(terminal.year, tail(om$years,1)-assess.interval,by = assess.interval)
 
-cluster <- makeCluster(5) 
+cluster <- makeCluster(n_cores-1) 
 registerDoParallel(cluster)
 
-foreach (i = 1:5) %dopar% {
+foreach (i = 1:100) %dopar% {
   
   library(wham)
   library(whamMSE)
@@ -354,28 +327,28 @@ foreach (i = 1:5) %dopar% {
   om_with_data <- update_om_fn(om, seed = 123+i, random = random)
   
   NAA_re_em <- list(N1_model="equilibrium",sigma="rec+1",cor="iid")
-
+  
   mod = loop_through_fn(om = om_with_data,
-                            em_info = info, 
-                            random = random,
-                            M_em = M, # use OM M
-                            sel_em = sel, # use OM sel
-                            NAA_re_em = NAA_re_em, # use rec assumed random around the mean instead, help runtime (est B-H is difficult)
-                            move_em = NULL,
-                            age_comp_em = "multinomial",
-                            # Here is the correct code: separate.em = FALSE also works for one-area model
-                            em.opt = list(separate.em = FALSE, separate.em.type = 1, 
-                                          do.move = FALSE, est.move = FALSE),
-                            assess_years = assess.years, 
-                            assess_interval = assess.interval, 
-                            base_years = base.years,
-                            year.use = 30, # number of years of data you want to use in the assessment model
-                            add.years = TRUE, # extends assessment time series instead of moving window of year.use years
-                            seed = 123+i,
-                            save.sdrep = FALSE, 
-                            save.last.em = TRUE,
-                            FXSPR_init = 0.01) # IMPORTANT!
-
+                        em_info = info, 
+                        random = random,
+                        M_em = M, # use OM M
+                        sel_em = sel, # use OM sel
+                        NAA_re_em = NAA_re_em, # use rec assumed random around the mean instead, help runtime (est B-H is difficult)
+                        move_em = NULL,
+                        age_comp_em = "multinomial",
+                        # Here is the correct code: separate.em = FALSE also works for one-area model
+                        em.opt = list(separate.em = FALSE, separate.em.type = 1, 
+                                      do.move = FALSE, est.move = FALSE),
+                        assess_years = assess.years, 
+                        assess_interval = assess.interval, 
+                        base_years = base.years,
+                        year.use = 30, # number of years of data you want to use in the assessment model
+                        add.years = TRUE, # extends assessment time series instead of moving window of year.use years
+                        seed = 123+i,
+                        save.sdrep = FALSE, 
+                        save.last.em = TRUE,
+                        FXSPR_init = 0.01) # IMPORTANT!
+  
   
   saveRDS(mod, file.path(sub.dir,sprintf("Mod3_%03d.RDS",i)))
   
@@ -384,11 +357,9 @@ foreach (i = 1:5) %dopar% {
 stopCluster(cluster)
 
 
-```
+# And degraded data with a 6 year assessment
 
-And degraded data with a 6 year assessment
 
-```{r}
 assess.interval <- 6 # 
 
 base.years      <- year_start:year_end # Burn-in period
@@ -396,10 +367,10 @@ first.year      <- head(base.years,1)
 terminal.year   <- tail(base.years,1)
 assess.years    <- seq(terminal.year, tail(om$years,1)-assess.interval,by = assess.interval)
 
-cluster <- makeCluster(5) 
+cluster <- makeCluster(n_cores-1) 
 registerDoParallel(cluster)
 
-foreach (i = 1:5) %dopar% {
+foreach (i = 1:100) %dopar% {
   
   library(wham)
   library(whamMSE)
@@ -407,28 +378,28 @@ foreach (i = 1:5) %dopar% {
   om_with_data <- update_om_fn(om, seed = 123+i, random = random)
   
   NAA_re_em <- list(N1_model="equilibrium",sigma="rec+1",cor="iid")
-
+  
   mod = loop_through_fn(om = om_with_data,
-                            em_info = info, 
-                            random = random,
-                            M_em = M, # use OM M
-                            sel_em = sel, # use OM sel
-                            NAA_re_em = NAA_re_em, # use rec assumed random around the mean instead, help runtime (est B-H is difficult)
-                            move_em = NULL,
-                            age_comp_em = "multinomial",
-                            # Here is the correct code: separate.em = FALSE also works for one-area model
-                            em.opt = list(separate.em = FALSE, separate.em.type = 1, 
-                                          do.move = FALSE, est.move = FALSE),
-                            assess_years = assess.years, 
-                            assess_interval = assess.interval, 
-                            base_years = base.years,
-                            year.use = 30, # number of years of data you want to use in the assessment model
-                            add.years = TRUE, # extends assessment time series instead of moving window of year.use years
-                            seed = 123+i,
-                            save.sdrep = FALSE, 
-                            save.last.em = TRUE,
-                            FXSPR_init = 0.01) # IMPORTANT!
-
+                        em_info = info, 
+                        random = random,
+                        M_em = M, # use OM M
+                        sel_em = sel, # use OM sel
+                        NAA_re_em = NAA_re_em, # use rec assumed random around the mean instead, help runtime (est B-H is difficult)
+                        move_em = NULL,
+                        age_comp_em = "multinomial",
+                        # Here is the correct code: separate.em = FALSE also works for one-area model
+                        em.opt = list(separate.em = FALSE, separate.em.type = 1, 
+                                      do.move = FALSE, est.move = FALSE),
+                        assess_years = assess.years, 
+                        assess_interval = assess.interval, 
+                        base_years = base.years,
+                        year.use = 30, # number of years of data you want to use in the assessment model
+                        add.years = TRUE, # extends assessment time series instead of moving window of year.use years
+                        seed = 123+i,
+                        save.sdrep = FALSE, 
+                        save.last.em = TRUE,
+                        FXSPR_init = 0.01) # IMPORTANT!
+  
   
   saveRDS(mod, file.path(sub.dir,sprintf("Mod4_%03d.RDS",i)))
   
@@ -437,5 +408,4 @@ foreach (i = 1:5) %dopar% {
 stopCluster(cluster)
 
 
-```
 
