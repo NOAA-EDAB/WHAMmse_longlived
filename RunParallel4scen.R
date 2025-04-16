@@ -6,24 +6,6 @@
 library(wham)
 library(whamMSE)
 
-main.dir = here::here()
-
-# get median DOY for each seasonal survey
-# from a local surdat pull 
-# survdat_nobio <- readRDS(here::here("localhugefiles/survdat_nolength.rds"))
-# fracyr <- survdat_nobio$survdat |> #file from April 2025
-#   dplyr::mutate(DOY = lubridate::yday(EST_TOWDATE)) |>
-#   dplyr::select(SEASON, DOY) |> dplyr::distinct() |>
-#   dplyr::group_by(SEASON) |>
-#   dplyr::summarise(medDOY = median(DOY, na.rm=T),
-#                    fracyrmed = medDOY/365)
-# fracyr
-# # A tibble: 2 × 3
-#   SEASON medDOY fracyrmed
-#   <chr>   <dbl>     <dbl>
-# 1 FALL     296.     0.812
-# 2 SPRING   108.     0.295
-
 year_start  <- 1  # starting year in the burn-in period
 year_end    <- 30  # end year in the burn-in period
 MSE_years   <- 30     # number of years in the feedback loop
