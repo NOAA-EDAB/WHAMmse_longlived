@@ -18,4 +18,4 @@ output: html_document
 
 <a href="https://noaa-edab.github.io/WHAMmse_longlived/MSEsetup.html" target="_blank"> Documenting long lived MSE workflow - April 2025 </a>
 
-<a href="https://noaa-edab.github.io/WHAMmse_longlived/Results.html" target="_blank"> Initial results - April 2025 </a>
+<a href="https://noaa-edab.github.io/WHAMmse_longlived/Scenarios.html" target="_blank"> Single run of base and data degradation scenarios - April 2025 </a>
