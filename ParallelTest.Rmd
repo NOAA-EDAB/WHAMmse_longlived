@@ -366,12 +366,20 @@ foreach (i = 1:5) %dopar% {
                             # Here is the correct code: separate.em = FALSE also works for one-area model
                             em.opt = list(separate.em = FALSE, separate.em.type = 1, 
                                           do.move = FALSE, est.move = FALSE),
+                            # ------------------------------------------------------ #
+                            # - Below is needed when making changes on data quality- #
+                            # ------------------------------------------------------ #
+                            update_index_info  = list(agg_index_sigma = agg_index_sigma, index_Neff = index_Neff), # Must have this!
+                            update_catch_info  = list(agg_catch_sigma = agg_catch_sigma, catch_Neff = catch_Neff), # Must have this!
+                            # ------------------------------------------------------ #
+                            # - Above is needed when making changes on data quality- #
+                            # ------------------------------------------------------ #
                             assess_years = assess.years, 
                             assess_interval = assess.interval, 
                             base_years = base.years,
                             year.use = 30, # number of years of data you want to use in the assessment model
                             add.years = TRUE, # extends assessment time series instead of moving window of year.use years
-                            seed = 123+i,
+                            seed = 123,
                             save.sdrep = FALSE, 
                             save.last.em = TRUE,
                             FXSPR_init = 0.01) # IMPORTANT!
@@ -419,12 +427,20 @@ foreach (i = 1:5) %dopar% {
                             # Here is the correct code: separate.em = FALSE also works for one-area model
                             em.opt = list(separate.em = FALSE, separate.em.type = 1, 
                                           do.move = FALSE, est.move = FALSE),
+                            # ------------------------------------------------------ #
+                            # - Below is needed when making changes on data quality- #
+                            # ------------------------------------------------------ #
+                            update_index_info  = list(agg_index_sigma = agg_index_sigma, index_Neff = index_Neff), # Must have this!
+                            update_catch_info  = list(agg_catch_sigma = agg_catch_sigma, catch_Neff = catch_Neff), # Must have this!
+                            # ------------------------------------------------------ #
+                            # - Above is needed when making changes on data quality- #
+                            # ------------------------------------------------------ #
                             assess_years = assess.years, 
                             assess_interval = assess.interval, 
                             base_years = base.years,
                             year.use = 30, # number of years of data you want to use in the assessment model
                             add.years = TRUE, # extends assessment time series instead of moving window of year.use years
-                            seed = 123+i,
+                            seed = 123,
                             save.sdrep = FALSE, 
                             save.last.em = TRUE,
                             FXSPR_init = 0.01) # IMPORTANT!
