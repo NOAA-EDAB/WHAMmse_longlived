@@ -98,7 +98,12 @@ info <- generate_basic_info(n_stocks = 1,
                             F_info = list(F.year1 = 0.1, Fhist = "F-H-L", Fmax = 2.5, Fmin = 1, change_time = 0.5, user_F = NULL),
                             catch_info = list(catch_cv = 0.1, catch_Neff = 100),
                             index_info = list(index_cv = 0.3, index_Neff = 100, fracyr_indices = c(0.295, 0.812), q = 0.2),
-                            fracyr_spawn = 0.625) 
+                            fracyr_spawn = 0.625)
+
+# --------------------------------------------------- #
+# ------- Do we need to change fracyr_spawn? -------- #
+#    Fraction of the year when spawning is now 0.625  #
+# --------------------------------------------------- #
 
 basic_info = info$basic_info # collect basic information
 catch_info = info$catch_info # collect fleet catch information
@@ -146,11 +151,25 @@ sigma_vals[,,1] = Rec_sig
 
 # Set initial NAA for each stock
 log_N1  <- rep(10, n_stocks) # Create difference between stocks
-N1_pars <- generate_ini_N1(log_N1,basic_info,ini.opt)
+
+# ------------------------------------------------------ #
+# ------------- Below code has been changed ------------ #
+# ------------------------------------------------------ #
+
+N1_pars <- generate_ini_N1(basic_info = basic_info, ini.opt = "equilibrium", log_N1 = log_N1, log_N1_F = 0.1)
+# WE MAY NEED TO HAVE A MORE SENSIBLE INITIAL NUMBERS AT AGE (now is using default: Number of age 1 = exp(10))
+
+# ------------------------------------------------------ #
+# ------------- Above code has been changed ------------ #
+# ------------------------------------------------------ #
 
 # Set mean recruitment para. for each stock
 mean_rec_par <- list()
-for (i in 1:n_stocks) mean_rec_par[[i]] <- exp(log_N1[i])
+for (i in 1:n_stocks) mean_rec_par[[i]] <- exp(log_N1[i]) #
+
+# ------------------------------------------------------ #
+# ------ WE MAY NEED A SENSIBLE MEAN RECREUITMENT ------ #
+# ------------------------------------------------------ #
 
 NAA_re <- list(N1_model=rep(ini.opt,n_stocks),
                sigma=rep(sigma,n_stocks),
@@ -298,6 +317,14 @@ mods[[2]] = loop_through_fn(om = om_with_data,
                             # Here is the correct code: separate.em = FALSE also works for one-area model
                             em.opt = list(separate.em = FALSE, separate.em.type = 1, 
                                           do.move = FALSE, est.move = FALSE),
+                            # ------------------------------------------------------ #
+                            # - Below is needed when making changes on data quality- #
+                            # ------------------------------------------------------ #
+                            update_index_info  = list(agg_index_sigma = agg_index_sigma, index_Neff = index_Neff), # Must have this!
+                            update_catch_info  = list(agg_catch_sigma = agg_catch_sigma, catch_Neff = catch_Neff), # Must have this!
+                            # ------------------------------------------------------ #
+                            # - Above is needed when making changes on data quality- #
+                            # ------------------------------------------------------ #
                             assess_years = assess.years, 
                             assess_interval = assess.interval, 
                             base_years = base.years,
@@ -319,19 +346,15 @@ This compares the base case,good surveys in the future (1) with degraded data, a
 
 par(mfrow = c(1,2))
 SSB_s1 <- lapply(mods, function(mod) mod$om$rep$SSB[,1])
-plot(SSB_s1[[1]], type = "l", col = "blue", ylab = "SSB", xlab = "Year", ylim=c(0,100000), main = "OM SSB") 
+plot(SSB_s1[[1]], type = "l", col = "blue", ylab = "SSB", xlab = "Year", ylim=c(0,100000), main = "OM SSB", lwd = 2) 
 colors <- c("red","green","purple","orange")
-for (i in length(SSB_s1)) {
-  lines(SSB_s1[[i]], col = colors[i-1],lty = i)
-}
-legend("topleft",legend = paste0("EM ", 1:2), col = c("blue",colors),lty=1:5, cex=0.8)
+lines(SSB_s1[[2]], col = colors[2],lty = 2, lwd = 2)
+legend("topleft",legend = paste0("EM ", 1:2), col = c("red","green"),lty=1:2, cex=0.8)
 
 Catch_s1 <- lapply(mods, function(mod) mod$om$rep$pred_catch[,1])
-plot(Catch_s1[[1]], type = "l", col = "blue", ylab = "Catch", xlab = "Year", ylim=c(0,30000), main = "OM Catch")
+plot(Catch_s1[[1]], type = "l", col = "blue", ylab = "Catch", xlab = "Year", ylim=c(0,15000), main = "OM Catch", lwd = 2)
 colors <- c("red","green","purple","orange")
-for (i in length(Catch_s1)) {
-  lines(Catch_s1[[i]], col = colors[i-1],lty = i)
-}
+lines(Catch_s1[[2]], col = colors[2],lty = 2, lwd = 2)
 
 ```
 
