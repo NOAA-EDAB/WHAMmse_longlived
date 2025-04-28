@@ -195,7 +195,7 @@ mods <- list() # Create a list to save MSE outputs
 Set up folders for results
 
 ```{r, eval=FALSE}
-sub.dir = "Results"
+sub.dir = "Results_test"
 dir.create(file.path(getwd(), sub.dir), recursive = TRUE)
 
 library(doParallel)
@@ -379,7 +379,7 @@ foreach (i = 1:5) %dopar% {
                             base_years = base.years,
                             year.use = 30, # number of years of data you want to use in the assessment model
                             add.years = TRUE, # extends assessment time series instead of moving window of year.use years
-                            seed = 123,
+                            seed = 123+i,
                             save.sdrep = FALSE, 
                             save.last.em = TRUE,
                             FXSPR_init = 0.01) # IMPORTANT!
@@ -440,7 +440,7 @@ foreach (i = 1:5) %dopar% {
                             base_years = base.years,
                             year.use = 30, # number of years of data you want to use in the assessment model
                             add.years = TRUE, # extends assessment time series instead of moving window of year.use years
-                            seed = 123,
+                            seed = 123+i,
                             save.sdrep = FALSE, 
                             save.last.em = TRUE,
                             FXSPR_init = 0.01) # IMPORTANT!
