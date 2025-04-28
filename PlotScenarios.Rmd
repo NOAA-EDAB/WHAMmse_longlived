@@ -1,0 +1,123 @@
+---
+title: "Plot Scenarios"
+author: "Sarah Gaichas"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Test plots with small subset 
+
+The first 5 runs of baseline with 3 year assessment are in Results_test
+
+What should we plot? SSB, Catch, F, Rec? How often the stock is overfished, interannual variation in catch?
+
+Read them in and build an object to plot
+
+```{r}
+# use the purrr library
+
+# function to pull the pieces from a single rds file
+
+d.name <- here::here("Results_test")
+modnames <- list.files(d.name)
+
+modpaths <- paste0(d.name, "/", modnames)
+
+getmodts <- function(path){
+
+  mod <- readRDS(here::here(path))
+  modpath <- stringr::str_split(path, "/", simplify = TRUE)
+  filename <- modpath[length(modpath)]
+  modname <- stringr::str_split(filename, ".RDS", simplify = TRUE)[1]
+  sceniter <- stringr::str_split(modname, "_", simplify = TRUE)
+  scen <- sceniter[1]
+  iter <- sceniter[2]
+
+  omSSB <- mod$om$rep$SSB
+  omcatch <- mod$om$rep$pred_catch
+  
+   # return model indices as a dataframe
+  out <- data.frame(modname = modname,
+                    scen = scen,
+                    iter = iter,
+                    year = 1:length(omSSB),
+                    omSSB = omSSB,
+                    omcatch = omcatch
+                    )
+  
+  return(out)
+}
+
+# apply the function over all rds in the directory
+
+testdat <- purrr::map_dfr(modpaths, getmodts)
+
+# plot SSB and catch for each model iteration
+# needs patchwork library
+
+library(patchwork)
+
+SSB <- ggplot2::ggplot(testdat) +
+  ggplot2::geom_line(ggplot2::aes(x=year, y=omSSB, colour = iter)) +
+  ggplot2::theme_bw() +
+  ggplot2::facet_wrap(~scen) +
+  ggplot2::theme(legend.position = "none")
+  
+
+Catch <- ggplot2::ggplot(testdat) +
+  ggplot2::geom_line(ggplot2::aes(x=year, y=omcatch, colour = iter))+
+  ggplot2::theme_bw() +
+  ggplot2::facet_wrap(~scen) +
+  ggplot2::theme(legend.position = "none")
+
+SSB + Catch
+
+```
+
+## A test with all 400
+
+Its a start
+
+
+```{r}
+d.name <- here::here("Results")
+modnames <- list.files(d.name)
+
+modpaths <- paste0(d.name, "/", modnames)
+
+# apply the function over all rds in the directory
+
+realdat <- purrr::map_dfr(modpaths, getmodts)
+
+# plot SSB and catch for each model iteration
+# needs patchwork library
+
+library(patchwork)
+
+scennames <- c(`Mod1` = "Base 3 yr",
+               `Mod2` = "Base 6 yr",
+               `Mod3` = "Degraded data 3 yr",
+               `Mod4` = "Degraded data 6 yr")
+
+SSB <- ggplot2::ggplot(realdat) +
+  ggplot2::geom_line(ggplot2::aes(x=year, y=omSSB, colour = iter),  alpha = 0.3) + #
+  ggplot2::theme_bw() +
+  ggplot2::facet_wrap(~scen, labeller = ggplot2::as_labeller(scennames)) +
+  ggplot2::theme(legend.position = "none")
+  
+
+Catch <- ggplot2::ggplot(realdat) +
+  ggplot2::geom_line(ggplot2::aes(x=year, y=omcatch, colour = iter), alpha = 0.3) + #
+  ggplot2::theme_bw() +
+  ggplot2::facet_wrap(~scen, labeller = ggplot2::as_labeller(scennames)) +
+  ggplot2::theme(legend.position = "none")
+
+SSB 
+
+Catch
+```
+
