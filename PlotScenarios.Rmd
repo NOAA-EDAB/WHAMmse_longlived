@@ -120,4 +120,162 @@ SSB
 
 Catch
 ```
+Add in Cheng's new plotting functions
+
+```{r}
+source(here::here("helper.R"))
+```
+
+Cheng's example modified from `MSE_plot_code.R`
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(fmsb)
+library(ggpubr)
+library(gridExtra)
+library(rmarkdown)
+
+main.dir = getwd()
+
+sub.dir <- 'Report'
+output_dir <- file.path(main.dir,sub.dir)
+
+if(!dir.exists(output_dir)) {
+  dir.create(output_dir, recursive = TRUE)
+}
+
+model_nums <- c(1,4)
+nsim <- 50 # number of simulations/seed
+
+mods <- vector("list", nsim)
+
+for (r in 1:nsim) {
+  mods[[r]] <- vector("list", length(model_nums))
+  names(mods[[r]]) <- paste0("Mod", model_nums)
+  
+  for (m in model_nums) {
+    file_path <- file.path("Results/", sprintf("Mod%d_%03d.RDS", m, r))
+    mods[[r]][[paste0("Mod", m)]] <- readRDS(file_path)
+  }
+}
+
+if (!is.list(mods[[1]][[1]][[1]])) is.nsim = FALSE else is.nsim = TRUE
+
+cat("\nPloting SSB Time Series...\n")
+
+plot_ssb_time_series(mods, is.nsim, main.dir, sub.dir, var = "SSB",
+                     width = 10, height = 7, dpi = 300,
+                     new_model_names = NULL) # you can change the Model name here
+
+cat("\nPloting Fbar Time Series...\n")
+
+plot_fbar_time_series(mods, is.nsim, main.dir, sub.dir, var = "Fbar",
+                      width = 10, height = 7, dpi = 300,
+                      new_model_names = NULL)
+
+cat("\nPloting Catch Time Series...\n")
+
+plot_catch_time_series(mods, is.nsim, main.dir, sub.dir, var = "Catch",
+                       width = 10, height = 7, dpi = 300,
+                       new_model_names = NULL)
+
+cat("\nPloting SSB Performance Over Last n Years...\n")
+
+# Long-term performance #
+# Default = 5 years #
+
+plot_ssb_performance(mods, is.nsim, main.dir, sub.dir, var = "SSB",
+                     width = 10, height = 7, dpi = 300,
+                     new_model_names = NULL,
+                     use.n.years = NULL)
+
+
+cat("\nPloting Fbar Performance Over Last n Years...\n")
+
+plot_fbar_performance(mods, is.nsim, main.dir, sub.dir, var = "Fbar",
+                      width = 10, height = 7, dpi = 300,
+                      new_model_names = NULL,
+                      use.n.years = NULL)
+
+cat("\nPloting Catch Performance Over Last n Years...\n")
+
+plot_catch_performance(mods, is.nsim, main.dir, sub.dir, var = "Catch",
+                       width = 10, height = 7, dpi = 300,
+                       new_model_names = NULL,
+                       use.n.years = NULL)
+
+cat("\nPloting SSB Performance Over First n Years...\n")
+
+# -----------------------
+# Short-term performance
+# -----------------------
+# summarize first 10 years in the feedback period
+start.years = 31 
+use.n.years = 10
+
+plot_ssb_performance2(mods, is.nsim, main.dir, sub.dir, var = "SSB",
+                      width = 10, height = 7, dpi = 300,
+                      new_model_names = NULL,
+                      use.n.years = use.n.years,
+                      start.years = start.years)
+
+cat("\nPloting Fbar Performance Over First n Years...\n")
+
+plot_fbar_performance2(mods, is.nsim, main.dir, sub.dir, var = "Fbar",
+                       width = 10, height = 7, dpi = 300,
+                       new_model_names = NULL,
+                       use.n.years = use.n.years,
+                       start.years = start.years)
+
+cat("\nPloting Catch Performance Over First n Years...\n")
+
+plot_catch_performance2(mods, is.nsim, main.dir, sub.dir, var = "Catch",
+                        width = 10, height = 7, dpi = 300,
+                        new_model_names = NULL,
+                        use.n.years = use.n.years,
+                        start.years = start.years)
+
+cat("\nPloting SSB Status and Probability of Overfished Over Last n Years...\n")
+
+plot_ssb_status(mods, is.nsim, main.dir, sub.dir, var = "SSB_status",
+                width = 10, height = 7, dpi = 300,
+                new_model_names = NULL,
+                use.n.years = NULL)
+
+cat("\nPloting Fbar Status and Probability of Overfishing Over Last n Years...\n")
+
+plot_fbar_status(mods, is.nsim, main.dir, sub.dir, var = "Fbar_status",
+                 width = 10, height = 7, dpi = 300,
+                 new_model_names = NULL,
+                 use.n.years = NULL)
+
+
+cat("\nPloting SSB Status and Probability of Overfished Over First n Years...\n")
+
+# -----------------------
+# Short-term performance
+# -----------------------
+# summarize first 10 years in the feedback period
+start.years = 31 
+use.n.years = 10
+
+plot_ssb_status2(mods, is.nsim, main.dir, sub.dir, var = "SSB_status",
+                 width = 10, height = 7, dpi = 300,
+                 new_model_names = NULL,
+                 use.n.years = use.n.years,
+                 start.years = start.years)
+
+
+cat("\nPloting Fbar Status and Probability of Overfishing Over First n Years...\n")
+
+plot_fbar_status2(mods, is.nsim, main.dir, sub.dir, var = "Fbar_status",
+                  width = 10, height = 7, dpi = 300,
+                  new_model_names = NULL,
+                  use.n.years = use.n.years,
+                  start.years = start.years)
+
+
+```
 
